@@ -3,6 +3,8 @@ import pandas as pd
 import proyecto_final as pf
 import zipfile
 import os
+import uuid
+import tempfile
 import shutil
 from datetime import datetime
 
@@ -156,7 +158,18 @@ if archivo_excel:
                         pf.RESTRICCIONES['peso_max_pallet'] = peso_maximo
                         
                         # Procesar Excel
-                        pf.procesar_excel(archivo_excel.name)
+                        # Crear ID único para este usuario/sesión
+                        session_id = str(uuid.uuid4())[:8]
+                        carpeta_temp = f"temp_pallet_{session_id}"
+                        nombre_reporte = f"Reporte_Pallets_{session_id}.xlsx"
+                        
+                        # Procesar con carpeta aislada
+                        carpeta_imagenes, archivo_salida = pf.procesar_excel(
+                            archivo_excel.name,
+                            carpeta_imagenes=carpeta_temp,
+                            archivo_salida=nombre_reporte
+                            )
+                            
                         
                         # Crear ZIP
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -168,16 +181,16 @@ if archivo_excel:
                         
                         with zipfile.ZipFile(nombre_zip, 'w', zipfile.ZIP_DEFLATED) as z:
                             # Agregar imágenes
-                            if os.path.exists(pf.CARPETA_IMAGENES):
-                                for root, dirs, files in os.walk(pf.CARPETA_IMAGENES):
+                            if os.path.exists(carpeta_imagenes):
+                                for root, dirs, files in os.walk(carpeta_imagenes):
                                     for file in files:
                                         file_path = os.path.join(root, file)
                                         arcname = os.path.relpath(file_path, '.')
                                         z.write(file_path, arcname)
                             
                             # Agregar reporte Excel
-                            if os.path.exists("Reporte_Estiba_Final.xlsx"):
-                                z.write("Reporte_Estiba_Final.xlsx")
+                            if os.path.exists(archivo_salida):
+                                z.write(archivo_salida)
                         
                         # Mostrar éxito
                         st.markdown("""
@@ -187,7 +200,7 @@ if archivo_excel:
                         """, unsafe_allow_html=True)
                         
                         # Leer reporte para mostrar estadísticas
-                        df_reporte = pd.read_excel("Reporte_Estiba_Final.xlsx")
+                        df_reporte = pd.read_excel(archivo_salida)
                         
                         # Estadísticas
                         col1, col2, col3, col4 = st.columns(4)
@@ -223,10 +236,10 @@ if archivo_excel:
                             )
                         
                         # Limpiar archivos temporales
-                        if os.path.exists(pf.CARPETA_IMAGENES):
-                            shutil.rmtree(pf.CARPETA_IMAGENES)
-                        if os.path.exists("Reporte_Estiba_Final.xlsx"):
-                            os.remove("Reporte_Estiba_Final.xlsx")
+                        if os.path.exists(carpeta_imagenes):
+                            shutil.rmtree(carpeta_imagenes)
+                        if os.path.exists(archivo_salida):
+                            os.remove(archivo_salida)
                         
                     except Exception as e:
                         st.error(f"❌ Error durante el procesamiento: {str(e)}")

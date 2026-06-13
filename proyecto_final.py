@@ -19,7 +19,12 @@ RESTRICCIONES = {
     'peso_max_pallet': 1000.0,  # kg
 }
 
-CARPETA_IMAGENES = "imagenes_pallet"
+CARPETA_IMAGENES = "imagenes_pallet"  # Valor por defecto
+
+def set_carpeta_imagenes(nombre):
+    """Cambia la carpeta de imágenes dinámicamente"""
+    global CARPETA_IMAGENES
+    CARPETA_IMAGENES = nombre
 
 # ══════════════════════════════════════════════════════════════
 # MOTOR GRÁFICO Y ESTRATEGIAS 
@@ -283,27 +288,38 @@ def optimizar_y_dibujar_pallet(box, pallet, trip, ruta_imagen=None, sku=None, de
 # ══════════════════════════════════
 # PROCESAMIENTO DESDE EXCEL 
 # ═════════════════════════════════
-def procesar_excel(archivo_entrada, archivo_salida=None):
-    os.makedirs(CARPETA_IMAGENES, exist_ok=True)
+def procesar_excel(archivo_entrada, carpeta_imagenes=None, archivo_salida=None):
+    """
+    Procesa un Excel de productos
+    
+    Args:
+        archivo_entrada: Path del Excel
+        carpeta_imagenes: Carpeta para guardar imágenes (ej: "temp_user_abc123")
+        archivo_salida: Nombre del reporte (ej: "Reporte_User_abc123.xlsx")
+    """
+    # Usar carpeta dinámica
+    if carpeta_imagenes is None:
+        carpeta_imagenes = CARPETA_IMAGENES
+    
+    os.makedirs(carpeta_imagenes, exist_ok=True)
+    
     df = pd.read_excel(archivo_entrada)
     print(f"  {len(df)} artículos encontrados en {archivo_entrada}\n")
     
     filas_resultados = []
 
     for idx, row in df.iterrows():
-        # Mapeo de datos
         sku = str(row['SKU'])
         desc = row['Descripcion']
         box = {
-            'largo': row['MP_Largo'] , 
-            'ancho': row['MP_Ancho'] , 
-            'alto': row['MP_Alto'] , 
+            'largo': row['MP_Largo'],
+            'ancho': row['MP_Ancho'],
+            'alto': row['MP_Alto'],
             'peso': row['MP_Peso']
         }
         
-        ruta_img = os.path.join(CARPETA_IMAGENES, f"Pallet_{sku}.png")
+        ruta_img = os.path.join(carpeta_imagenes, f"Pallet_{sku}.png")
         
-        # Ejecutar optimización y dibujo
         metricas = optimizar_y_dibujar_pallet(
             box=box, 
             pallet=PALLET_ESTANDAR, 
@@ -313,7 +329,6 @@ def procesar_excel(archivo_entrada, archivo_salida=None):
             descripcion=desc
         )
         
-        # Guardar resultados en una fila
         fila = row.to_dict()
         fila.update(metricas)
         fila['Ruta_Imagen'] = ruta_img
@@ -321,11 +336,16 @@ def procesar_excel(archivo_entrada, archivo_salida=None):
         
         print(f"Pallet generado: {sku}")
 
-    # Guardar reporte Excel final
+    # Guardar con nombre dinámico
     df_salida = pd.DataFrame(filas_resultados)
-    nombre_xlsx = "Reporte_Estiba_Final.xlsx"
-    df_salida.to_excel(nombre_xlsx, index=False)
-    print(f"\n✅ Proceso completado. Reporte guardado como: {nombre_xlsx}")
+    
+    if archivo_salida is None:
+        archivo_salida = "Reporte_Estiba_Final.xlsx"
+    
+    df_salida.to_excel(archivo_salida, index=False)
+    print(f"\n✅ Proceso completado. Reporte guardado como: {archivo_salida}")
+    
+    return carpeta_imagenes, archivo_salida  # Retorna los nombres
 
 if __name__ == "__main__":
     procesar_excel('tVolumetria_Vidri_ElSalvador.xlsx')
