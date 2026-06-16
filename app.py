@@ -163,12 +163,20 @@ if archivo_excel:
                         carpeta_temp = f"temp_pallet_{session_id}"
                         nombre_reporte = f"Reporte_Pallets_{session_id}.xlsx"
                         
-                        # Procesar con carpeta aislada
+                        # Guardar temporalmente el archivo para procesarlo
+                        archivo_temporal = f"temp_{session_id}.xlsx"
+                        with open(archivo_temporal, 'wb') as f:
+                            f.write(archivo_excel.getvalue())
+
                         carpeta_imagenes, archivo_salida = pf.procesar_excel(
-                            archivo_excel.name,
+                            archivo_temporal,
                             carpeta_imagenes=carpeta_temp,
                             archivo_salida=nombre_reporte
-                            )
+                        )
+
+                        # Limpiar el archivo temporal después
+                        if os.path.exists(archivo_temporal):
+                            os.remove(archivo_temporal)
                             
                         
                         # Crear ZIP
